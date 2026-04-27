@@ -8,12 +8,13 @@ const state = {
     { id: 'extract', title: 'Extract encryption key', subtitle: 'Log in within 1 min',  status: 'pending' },
     { id: 'done',    title: 'Copy your key',          subtitle: 'Key ready to use',      status: 'pending' },
   ],
-  extractedKey:    null,
-  dbPath:          null,
-  logLines:        [],
-  logVisible:      false,
-  timerInterval:   null,
-  timerSeconds:    60,
+  extractedKey:     null,
+  dbPath:           null,
+  extractionError:  null,   // set on API error (distinct from timer running out)
+  logLines:         [],
+  logVisible:       false,
+  timerInterval:    null,
+  timerSeconds:     60,
   wechatPollInterval: null,
 }
 
@@ -115,18 +116,25 @@ function renderStep2() {
     </div>
   ` : ''
 
-  const buttonHtml = !state.extractedKey && state.timerSeconds > 0 ? `
+  const buttonHtml = !state.extractedKey && state.timerSeconds > 0 && !state.extractionError ? `
     <button class="btn btn-primary" id="btnStartExtract">
       ▶ Start — I'm ready to log in
     </button>
   ` : ''
 
-  const retryHtml = (!state.extractedKey && state.timerSeconds <= 0) ? `
-    <div class="error-box">Time ran out. Click Retry to try again.</div>
+  // Timer ran out naturally (no API error)
+  const retryHtml = (!state.extractedKey && state.timerSeconds <= 0 && !state.extractionError) ? `
+    <div class="error-box">Time ran out. Log in to WeChat faster next time, or click Retry.</div>
     <button class="btn btn-secondary" style="margin-top:12px" id="btnRetryExtract">↺ Retry</button>
   ` : ''
 
-  const readyNote = !state.extractedKey && state.timerSeconds > 0 ? `
+  // API returned an error (connection refused, wetrace not running, etc.)
+  const errorHtml = (state.extractionError && !state.extractedKey) ? `
+    <div class="error-box">${escHtml(state.extractionError)}</div>
+    <button class="btn btn-secondary" style="margin-top:12px" id="btnRetryExtract">↺ Retry</button>
+  ` : ''
+
+  const readyNote = !state.extractedKey && state.timerSeconds > 0 && !state.extractionError ? `
     <div class="instruction-card" style="margin-top:14px;font-size:13px;">
       <strong>What happens when you click Start:</strong><br><br>
       WeChat may open a login window — <strong>that is expected</strong>. Sign in as normal
@@ -142,6 +150,7 @@ function renderStep2() {
     ${buttonHtml}
     ${readyNote}
     ${retryHtml}
+    ${errorHtml}
     <div class="log-section">
       <button class="log-toggle ${state.logVisible ? 'open' : ''}" id="btnLogToggle">
         <span class="chevron">▶</span> Show background log
@@ -264,8 +273,9 @@ function attachHandlers() {
 
   const btnRetry = $('btnRetryExtract')
   if (btnRetry) btnRetry.onclick = () => {
-    state.timerSeconds = 60
-    state.extractedKey = null
+    state.timerSeconds    = 60
+    state.extractedKey    = null
+    state.extractionError = null
     renderContent()
     runExtraction()
   }
@@ -280,8 +290,9 @@ function attachHandlers() {
 
   const btnBack = $('btnBackToExtract')
   if (btnBack) btnBack.onclick = () => {
-    state.timerSeconds = 60
-    state.extractedKey = null
+    state.timerSeconds    = 60
+    state.extractedKey    = null
+    state.extractionError = null
     advanceTo(2)
   }
 
@@ -352,9 +363,14 @@ async function runExtraction() {
     appendLog('Key captured.')
     state.steps[2].status = 'complete'
     advanceTo(3)
-  } else {
-    state.timerSeconds = 0
+  } else if (state.timerSeconds <= 0) {
+    // Natural timeout — timer already at 0, just re-render to show retry
     appendLog('[ERR] ' + (res.error || 'Key extraction timed out'))
+    renderContent()
+  } else {
+    // API returned an error before the timer ran out (e.g. wetrace not running)
+    state.extractionError = res.error || 'Key extraction failed'
+    appendLog('[ERR] ' + state.extractionError)
     renderContent()
   }
 }
