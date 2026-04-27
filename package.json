@@ -1,0 +1,48 @@
+{
+  "name": "wetrace-wrapper",
+  "version": "1.0.0",
+  "description": "WeChat encryption key extractor",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.tyolab.wetrace-wrapper",
+    "productName": "WetraceTool",
+    "copyright": "Copyright © 2026 tyolab",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!vendor/**",
+      "!*.md"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/",
+        "to": "vendor/",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WetraceTool"
+    }
+  }
+}
