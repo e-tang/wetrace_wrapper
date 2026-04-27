@@ -13,7 +13,7 @@ function vendorDir() {
 }
 function wetraceExe() { return path.join(vendorDir(), 'wetrace.exe') }
 
-const WETRACE_PORT = 18888
+const WETRACE_PORT = 5200
 
 // ─── Window ───────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ async function startWetrace() {
   }
 
   // Already running?
-  try { await apiCall('GET', '/health', null, 1000); return { ok: true } } catch (_) {}
+  try { await apiCall('GET', '/', null, 1000); return { ok: true } } catch (_) {}
 
   stopWetrace()
 
@@ -110,7 +110,7 @@ async function startWetrace() {
     const poll = setInterval(async () => {
       attempts++
       try {
-        await apiCall('GET', '/health')
+        await apiCall('GET', '/')
         clearInterval(poll)
         resolve({ ok: true })
       } catch (_) {

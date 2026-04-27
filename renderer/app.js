@@ -11,6 +11,7 @@ const state = {
   extractedKey:     null,
   dbPath:           null,
   extractionError:  null,   // set on API error (distinct from timer running out)
+  wetraceReady:     false,  // true once wetrace health check passes
   logLines:         [],
   logVisible:       false,
   timerInterval:    null,
@@ -116,11 +117,11 @@ function renderStep2() {
     </div>
   ` : ''
 
-  const buttonHtml = !state.extractedKey && state.timerSeconds > 0 && !state.extractionError ? `
-    <button class="btn btn-primary" id="btnStartExtract">
-      ▶ Start — I'm ready to log in
-    </button>
-  ` : ''
+  const buttonHtml = !state.extractedKey && state.timerSeconds > 0 && !state.extractionError
+    ? state.wetraceReady
+      ? `<button class="btn btn-primary" id="btnStartExtract">▶ Start — I'm ready to log in</button>`
+      : `<button class="btn btn-primary" disabled>Starting background service…</button>`
+    : ''
 
   // Timer ran out naturally (no API error)
   const retryHtml = (!state.extractedKey && state.timerSeconds <= 0 && !state.extractionError) ? `
@@ -334,7 +335,8 @@ async function startWechatPolling() {
 }
 
 async function beginExtraction() {
-  advanceTo(2)
+  state.wetraceReady = false
+  advanceTo(2)   // renders step 2 with disabled "Starting…" button
   appendLog('Starting wetrace backend…')
   const res = await window.api.startWetrace()
   if (!res.ok) {
@@ -344,8 +346,9 @@ async function beginExtraction() {
     renderContent()
     return
   }
+  state.wetraceReady = true
   appendLog('wetrace is ready.')
-  renderContent()
+  renderContent()  // re-renders with active Start button
 }
 
 async function runExtraction() {
